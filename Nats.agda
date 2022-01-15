@@ -130,7 +130,7 @@ data Bin : Set where
     _I : Bin → Bin
 
 inc : Bin → Bin
-inc ⟨⟩ = ⟨⟩ I  
+inc ⟨⟩ = ⟨⟩ I 
 inc (n O) = n I  
 inc (n I) = (inc n) O
 
@@ -147,20 +147,14 @@ _ =
 
 to : ℕ → Bin
 to zero = ⟨⟩ O
-to (succ n) = (to n) I  
+to (succ n) = inc (to n)
 
 _ =
-    begin
-        to 3
-    ≡⟨⟩
-        (to 2) I
-    ≡⟨⟩
-        ((to 1) I) I
-    ≡⟨⟩
-        (((to 0) I) I) I
-    ≡⟨⟩
-        ⟨⟩ O I I I
-    ∎
+  begin
+    to 2
+  ≡⟨⟩
+    ⟨⟩ I O
+  ∎
 
 from : Bin → ℕ
 from ⟨⟩ = zero  

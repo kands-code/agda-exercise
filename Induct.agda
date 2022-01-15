@@ -3,7 +3,7 @@ module Induct where
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
 
 +-assoc : ∀ (m n p : ℕ) → (m + n) + p ≡ m + (n + p)
 +-assoc zero n p =
@@ -168,7 +168,11 @@ lemma₂ (suc m) n rewrite lemma₂ m n =
     ∎
 
 *-distrib-+ : ∀ (m n p : ℕ) → (m + n) * p ≡ m * p + n * p
-*-distrib-+ m n zero rewrite lemma₁ (m + n) | lemma₁ m | lemma₁ n = refl  
+*-distrib-+ m n zero
+  rewrite lemma₁ (m + n) 
+    | lemma₁ m 
+    | lemma₁ n 
+    = refl  
 *-distrib-+ m n (suc p) =
     begin
         (m + n) * suc p
@@ -190,24 +194,108 @@ lemma₂ (suc m) n rewrite lemma₂ m n =
 
 *-assoc : ∀ (m n p : ℕ) → (m * n) * p ≡ m * (n * p)
 *-assoc zero n p = refl
-*-assoc (suc m) n p rewrite *-distrib-+ n (m * n) p | cong (n * p +_) (*-assoc m n p) = refl
+*-assoc (suc m) n p
+  rewrite *-distrib-+ n (m * n) p 
+    | cong (n * p +_) (*-assoc m n p) 
+    = refl
 
 *-comm : ∀ (m n : ℕ) → m * n ≡ n * m
 *-comm m zero rewrite lemma₁ m = refl
-*-comm m (suc n) rewrite lemma₂ m n | cong (m +_) (*-comm m n) = refl
+*-comm m (suc n)
+  rewrite lemma₂ m n 
+    | cong (m +_) (*-comm m n) 
+    = refl
 
 0∸n≡0 : ∀ (n : ℕ) → zero ∸ n ≡ zero
 0∸n≡0 zero = refl
 0∸n≡0 (suc n) = refl
 
-lemma₃ : ∀ (m n : ℕ) → suc m ∸ n ≡ suc (m ∸ n)
-lemma₃ m zero = refl
-lemma₃ m (suc n) =
-  begin
-    suc m ∸ suc n
-  ≡⟨⟩
-    {!   !}
-
 ∸-+-assoc : ∀ (m n p : ℕ) → m ∸ n ∸ p ≡ m ∸ (n + p)
-∸-+-assoc m n zero rewrite +-identityʳ n = refl
-∸-+-assoc m n (suc p) = {!   !}
+∸-+-assoc zero n p
+  rewrite 0∸n≡0 n
+    | 0∸n≡0 p
+    | 0∸n≡0 (n + p)
+    = refl
+∸-+-assoc (suc m) zero p = refl
+∸-+-assoc (suc m) (suc n) p
+  rewrite ∸-+-assoc m n p
+    = refl
+
+^-distribˡ-+-* : ∀ (m n p : ℕ) →
+  m ^ (n + p) ≡ (m ^ n) * (m ^ p)
+^-distribˡ-+-* m zero p 
+  rewrite +-comm (m ^ p) 0
+    = refl
+^-distribˡ-+-* m (suc n) p
+  rewrite *-assoc m (m ^ n) (m ^ p)
+    | cong (m *_) (^-distribˡ-+-* m n p) 
+    = refl
+
+lemma₃ : ∀ (m n : ℕ) → m ^ suc n ≡ m * (m ^ n)
+lemma₃ m zero = refl
+lemma₃ m (suc n) = refl
+
+^-distribʳ-* : ∀ (m n p : ℕ) →
+  (m * n) ^ p ≡ (m ^ p) * (n ^ p)
+^-distribʳ-* m n zero = refl
+^-distribʳ-* m n (suc p)
+  rewrite lemma₃ m p
+    | *-assoc m n ((m * n) ^ p)
+    | *-assoc m (m ^ p) (n * (n ^ p))
+    | sym (*-assoc (m ^ p) n (n ^ p))
+    | *-comm (m ^ p) n
+    | ^-distribʳ-* m n p
+    | sym (*-assoc n (m ^ p) (n ^ p))
+    = refl
+
+1^n≡1 : ∀ (n : ℕ) → 1 ^ n ≡ 1
+1^n≡1 zero = refl
+1^n≡1 (suc n)
+  rewrite lemma₃ 1 n
+    | 1^n≡1 n
+    = refl
+
+^-*-assoc : ∀ (m n p : ℕ) → (m ^ n) ^ p ≡ m ^ (n * p)
+^-*-assoc m zero p
+  rewrite *-comm zero p
+    | 1^n≡1 p 
+    = refl
+^-*-assoc m (suc n) p
+  rewrite ^-distribˡ-+-* m p (n * p)
+    | ^-distribʳ-* m (m ^ n) p
+    | ^-*-assoc m n p
+    = refl
+
+-- Bin-laws
+data Bin : Set where
+    ⟨⟩ : Bin
+    _O : Bin → Bin
+    _I : Bin → Bin
+
+inc : Bin → Bin
+inc ⟨⟩ = ⟨⟩ I 
+inc (n O) = n I  
+inc (n I) = (inc n) O
+
+to : ℕ → Bin
+to zero = ⟨⟩ O
+to (suc n) = inc (to n)
+
+from : Bin → ℕ
+from ⟨⟩ = zero  
+from (n O) = 2 * from n
+from (n I) = suc (2 * from n)
+
+thm₁ : ∀ (b : Bin) → from (inc b) ≡ suc (from b)
+thm₁ ⟨⟩ = refl
+thm₁ (b O) = refl
+thm₁ (b I)
+  rewrite thm₁ b 
+    | +-suc (from b) (suc (from b) + 0)
+    | +-comm (from b) (suc (from b + 0))
+    | +-comm (from b) 0 = refl
+
+thm₃ : ∀ (n : ℕ) → from (to n) ≡ n
+thm₃ zero = refl
+thm₃ (suc n)
+  rewrite thm₁ (to (suc n)) = {!   !}
