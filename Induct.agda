@@ -295,7 +295,13 @@ thm₁ (b I)
     | +-comm (from b) (suc (from b + 0))
     | +-comm (from b) 0 = refl
 
+-- thm₂ : ∀ (b : Bin) → to (from b) = b
+-- 这是错误的，因为 Bin 中的 (⟨⟩ O) 和 (⟨⟩)
+-- 都和 自然数 的 0 对应 
+
 thm₃ : ∀ (n : ℕ) → from (to n) ≡ n
 thm₃ zero = refl
 thm₃ (suc n)
-  rewrite thm₁ (to (suc n)) = {!   !}
+  rewrite thm₁ (to (suc n))
+    | thm₁ (to n)
+    | thm₃ n = refl
